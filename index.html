@@ -4,10 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Atlas UPSC — World Mapping Practice</title>
-  <!-- Theme is read and applied before first paint (not after DOMContentLoaded) to avoid a
-       flash of the wrong theme when opened from the iPhone home-screen icon. The main script
-       reuses this value instead of recomputing it. -->
-  <script>document.documentElement.dataset.theme = localStorage.getItem('atlasTheme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');</script>
   <!-- PWA / "Add to Home Screen" support: icon, manifest and standalone-mode meta tags are all
        inlined as data: URIs so the project stays a single HTML file (no separate icon/manifest
        files, per project convention). Re-add the home-screen bookmark on iPhone after this
@@ -26,12 +22,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root { --ink:#17212d; --muted:#687484; --paper:#f6f3ec; --white:#fffdf9; --line:#e0ddd5; --navy:#0d2d48; --blue:#1976d2; --gold:#d59618; --green:#16856d; --red:#d64c45; }
-    /* Dark theme: overriding the same variable set covers most of the page (topbar, cards,
-       text) automatically since those rules already read var(--ink)/var(--white)/etc. The
-       handful of components with a color hardcoded outside the variable set (chips, popups,
-       quiz card, tooltips) get explicit [data-theme="dark"] overrides, grouped in one block
-       right before the responsive breakpoints rather than scattered next to each light rule. */
-    :root[data-theme="dark"] { --ink:#e7edf3; --muted:#93a4b8; --paper:#0d141d; --white:#161f2a; --line:#293544; --navy:#0a1620; --blue:#5aa8f5; --gold:#e7bb5c; --green:#37bd98; --red:#ea6f66; }
     * { box-sizing:border-box; }
     /* overflow:hidden here is a hard guarantee, not just the .app height:100vh fix above:
        the page itself can never scroll, so <aside>'s own overflow:auto is the ONLY scroll
@@ -58,11 +48,8 @@
     .scope-nav span { color:#aebfce; font-size:10px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
     .mode-btn { border:0; background:transparent; color:#c3d1dd; padding:8px 12px; border-radius:6px; font-weight:650; }
     .mode-btn.active { background:#ffffff1e; color:#fff; }
-    .topbar-actions { margin-left:auto; display:flex; align-items:center; gap:16px; }
-    .top-stats { display:flex; align-items:center; gap:20px; font-size:12px; color:#d9e4eb; }
+    .top-stats { margin-left:auto; display:flex; align-items:center; gap:20px; font-size:12px; color:#d9e4eb; }
     .top-stat b { color:#f5ce75; display:block; font-size:16px; line-height:1; }
-    .theme-toggle { border:0; background:#ffffff1e; color:#fff; width:30px; height:30px; border-radius:8px; font-size:15px; display:grid; place-items:center; flex:0 0 auto; }
-    .theme-toggle:hover { background:#ffffff33; }
     .layout { min-height:0; display:grid; grid-template-columns:340px minmax(0,1fr); }
     aside { z-index:2; background:var(--white); border-right:1px solid var(--line); overflow:auto; }
     .panel { padding:22px 22px 16px; border-bottom:1px solid var(--line); }
@@ -156,36 +143,15 @@
     .river-tooltip { background:#0d2d48; color:#fff; border:0; font-weight:650; font-size:11px; padding:3px 8px; border-radius:5px; box-shadow:0 2px 8px #14283a3d; }
     .river-tooltip:before { border-top-color:#0d2d48; }
     .corridor-tooltip { max-width:240px; white-space:normal; line-height:1.4; padding:6px 10px; }
-    .pulse { width:18px; height:18px; border-radius:50% 50% 50% 0; background:var(--gold); transform:rotate(-45deg); border:2px solid white; box-shadow:0 2px 5px #173b555c; animation:markerPop .2s ease-out; }
+    .pulse { position:relative; width:20px; height:20px; border-radius:50% 50% 50% 0; background:var(--gold); transform:rotate(-45deg); border:2px solid white; box-shadow:0 2px 5px #173b555c; animation:markerPop .2s ease-out; }
     .pulse.park { background:var(--green); } .pulse.quiz { background:var(--blue); animation:pulse 1.5s infinite; } @keyframes pulse { 0% { box-shadow:0 0 0 0 #1976d278; } 70% { box-shadow:0 0 0 11px #1976d200; } 100% { box-shadow:0 0 0 0 #1976d200; } }
+    /* Per-theme glyph reuses the same icon character already defined on that topic's sidebar
+       tile (indiaTopics/worldTopics), so a mountain range pin and the "Himalaya" tile show the
+       same △ - one source of truth for the symbol instead of a second icon set to keep in sync. */
+    .pulse-glyph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; transform:rotate(45deg); font-size:11px; line-height:1; pointer-events:none; }
     @keyframes markerPop { from { transform:rotate(-45deg) scale(.3); opacity:0; } to { transform:rotate(-45deg) scale(1); opacity:1; } }
     .legend { position:absolute; z-index:500; right:16px; bottom:22px; background:#fffdfaee; box-shadow:0 2px 12px #182f3f28; border-radius:6px; padding:8px 10px; color:#596878; font-size:11px; }
     .legend span { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--gold); margin-right:4px; } .legend b { display:inline-block; width:12px; } .legend i { display:inline-block; width:14px; border-top:2px solid #235270; margin:0 4px 3px 0; }
-    [data-theme="dark"] .topic, [data-theme="dark"] .chip, [data-theme="dark"] .layer-row, [data-theme="dark"] .corridor-list, [data-theme="dark"] .secondary, [data-theme="dark"] .map-mode button, [data-theme="dark"] .search-box input { background:var(--white); color:var(--ink); border-color:var(--line); }
-    [data-theme="dark"] .search-result:hover { background:#16283a; }
-    [data-theme="dark"] .topic:hover { border-color:#3d5b76; }
-    [data-theme="dark"] .topic.selected { background:#132842; }
-    [data-theme="dark"] .chip { color:#a9b8c9; }
-    [data-theme="dark"] .chip.active { background:#132842; color:#8fc2f7; }
-    [data-theme="dark"] .place:hover, [data-theme="dark"] .place.current { background:#16283a; }
-    [data-theme="dark"] .layer-switch { background:#2c394a; }
-    [data-theme="dark"] .corridor-item:hover, [data-theme="dark"] .corridor-item.selected { background:#20293d; }
-    [data-theme="dark"] .corridor-fact-box { background:#1c2436; border-color:#33415a; color:#c9d3e6; }
-    [data-theme="dark"] .corridor-fact-box b { color:#e7edf3; }
-    [data-theme="dark"] .quiz-card { background:#141d27; }
-    [data-theme="dark"] .quiz-minimize { background:#233042; color:#c3cddb; }
-    [data-theme="dark"] .progress { background:#233042; }
-    [data-theme="dark"] .answer { border-color:#3a4a5c; color:#c3cddb; }
-    [data-theme="dark"] .answer.correct { background:#0f2b23; color:#4fd6ab; }
-    [data-theme="dark"] .answer.wrong { background:#2c1614; color:#f0938c; }
-    [data-theme="dark"] .leaflet-popup-content-wrapper, [data-theme="dark"] .leaflet-popup-tip { background:var(--white); color:var(--ink); }
-    [data-theme="dark"] .leaflet-popup-close-button { color:#93a4b8 !important; }
-    [data-theme="dark"] .popup-type { color:#8b9bad; }
-    [data-theme="dark"] .popup-fact { color:#c3cddb; }
-    [data-theme="dark"] .must-badge { background:#3a2c0f; color:#f0c775; border-color:#5a4419; }
-    [data-theme="dark"] .marker-label, [data-theme="dark"] .corridor-city-label { color:#eef2f7; text-shadow:0 1px 2px #0a1319,1px 0 2px #0a1319,-1px 0 2px #0a1319,0 -1px 2px #0a1319; }
-    [data-theme="dark"] .legend { background:#141d27e6; color:#93a4b8; }
-    [data-theme="dark"] .map-wrap { background:#0a1620; }
     .sheet-handle { display:none; width:100%; border:0; background:transparent; padding:9px 0 5px; flex-direction:column; align-items:center; gap:6px; }
     .sheet-handle .grip { width:36px; height:4px; border-radius:3px; background:var(--line); }
     .sheet-handle-label { font-size:11px; font-weight:750; color:var(--muted); letter-spacing:.02em; }
@@ -206,7 +172,23 @@
       .panel { padding:16px; }
       .place-list { max-height:150px; }
     }
-    @media (max-width:430px) { .brand span { display:none; } .mode-btn { padding:7px 8px; } .topic-grid { grid-template-columns:repeat(4,1fr); } .topic { padding:6px; min-height:52px; text-align:center; } .topic small { display:none; } .quiz-card { left:14px; top:14px; width:calc(100% - 28px); } }
+    /* Below ~430px the topbar's natural content width (brand + Learn/Play + Map/World/India +
+       theme toggle) exceeds the viewport - shrinking padding alone wasn't enough (still ~450px+
+       of content vs ~375-390px of real phone), and the page can't scroll to reach the clipped
+       part (see the overflow:hidden note up top). Wrapping the brand onto its own row is a
+       robust fix that doesn't depend on hitting an exact pixel budget the way more shrinking
+       would - it degrades gracefully on any narrow width instead of clipping. */
+    @media (max-width:430px) {
+      .topbar { flex-wrap:wrap; row-gap:8px; }
+      .brand { flex:1 0 100%; }
+      .brand span { display:none; }
+      .scope-nav span { display:none; }
+      .mode-btn { padding:7px 8px; }
+      .topic-grid { grid-template-columns:repeat(4,1fr); }
+      .topic { padding:6px; min-height:52px; text-align:center; }
+      .topic small { display:none; }
+      .quiz-card { left:14px; top:14px; width:calc(100% - 28px); }
+    }
   </style>
 </head>
 <body>
@@ -215,10 +197,7 @@
       <div class="brand"><div class="brand-mark">✦</div><div><strong>ATLAS UPSC</strong><span>WORLD MAPPING LAB</span></div></div>
       <nav class="mode-nav" aria-label="Study mode"><button class="mode-btn active" id="learnMode">Learn</button><button class="mode-btn" id="playMode">Play</button></nav>
       <nav class="scope-nav" aria-label="Map area"><span>Map</span><button class="mode-btn" id="worldScope">World</button><button class="mode-btn active" id="indiaScope">India</button></nav>
-      <div class="topbar-actions">
-        <div class="top-stats"><div class="top-stat"><b id="knownCount">0</b>explored</div><div class="top-stat"><b id="scoreCount">0</b>quiz score</div><div class="top-stat"><b id="streakCount">0</b>streak</div></div>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">☾</button>
-      </div>
+      <div class="top-stats"><div class="top-stat"><b id="knownCount">0</b>explored</div><div class="top-stat"><b id="scoreCount">0</b>quiz score</div><div class="top-stat"><b id="streakCount">0</b>streak</div></div>
     </header>
     <section class="layout">
       <aside>
@@ -289,7 +268,7 @@
       {name:'Madagascar',type:'Island',topic:'Islands',lat:-19.0,lng:46.7,fact:'Large Indian Ocean island off southeast Africa, separated by the Mozambique Channel.'}
     ];
     const worldTopics = [
-      {name:'Chokepoints',icon:'⚓'}, {name:'Seas & gulfs',icon:'≋'}, {name:'Landforms',icon:'△'}, {name:'Regions',icon:'◌'}, {name:'Geopolitics',icon:'◎'}, {name:'Islands',icon:'◒'}, {name:'Lakes',icon:'○'}, {name:'Mountains',icon:'⌃'}, {name:'Volcanoes',icon:'▲'}, {name:'Plateaus',icon:'▭'}, {name:'Places in News',icon:'✦'}, {name:'Capitals on Rivers',icon:'◆'}, {name:'Tectonic Plates',icon:'⛭'}, {name:'International Organizations',icon:'⚑'}, {name:'Connectivity Projects',icon:'⚑'}, {name:'Deserts',icon:'⛱'}, {name:'Waterfalls',icon:'⇊'}
+      {name:'Chokepoints',icon:'⚓'}, {name:'Seas & gulfs',icon:'🌊'}, {name:'Landforms',icon:'🗺️'}, {name:'Regions',icon:'🧭'}, {name:'Geopolitics',icon:'🌍'}, {name:'Islands',icon:'🏝️'}, {name:'Lakes',icon:'🏞️'}, {name:'Mountains',icon:'⛰'}, {name:'Volcanoes',icon:'🌋'}, {name:'Plateaus',icon:'🗻'}, {name:'Places in News',icon:'📰'}, {name:'Capitals on Rivers',icon:'🏙️'}, {name:'Tectonic Plates',icon:'🧩'}, {name:'International Organizations',icon:'🤝'}, {name:'Connectivity Projects',icon:'🛤️'}, {name:'Deserts',icon:'🏜️'}, {name:'Waterfalls',icon:'💦'}
     ];
     // World extras below researched against UPSC-prep sources (LotusArise, MapsForUPSC,
     // Vajiram & Ravi, Drishti IAS) rather than generated from memory alone - see chat for
@@ -307,7 +286,7 @@
     // (search '<year> UPSC places in news') rather than trusting this list long-term.
     const worldPlacesInNewsData = [{"name":"Greenland","type":"Place in news","topic":"Places in News","lat":72,"lng":-40,"fact":"Denmark (autonomous territory). In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Chagos Archipelago","type":"Place in news","topic":"Places in News","lat":-6.3,"lng":71.9,"fact":"Indian Ocean (UK/Mauritius). In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Diego Garcia","type":"Place in news","topic":"Places in News","lat":-7.3,"lng":72.4,"fact":"Chagos Archipelago. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Nagorno-Karabakh","type":"Place in news","topic":"Places in News","lat":39.9,"lng":46.7,"fact":"Azerbaijan/Armenia. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Senkaku Islands","type":"Place in news","topic":"Places in News","lat":25.75,"lng":123.47,"fact":"East China Sea (Japan/China/Taiwan). In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Scarborough Shoal","type":"Place in news","topic":"Places in News","lat":15.13,"lng":117.75,"fact":"South China Sea. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Darfur","type":"Place in news","topic":"Places in News","lat":13.5,"lng":23.5,"fact":"Sudan. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Gaza Strip","type":"Place in news","topic":"Places in News","lat":31.4,"lng":34.3,"fact":"Palestine. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Donbas","type":"Place in news","topic":"Places in News","lat":48,"lng":38,"fact":"Ukraine. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Kursk Region","type":"Place in news","topic":"Places in News","lat":51.7,"lng":36.2,"fact":"Russia. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Bougainville Island","type":"Place in news","topic":"Places in News","lat":-6.2,"lng":155.2,"fact":"Papua New Guinea. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Somaliland","type":"Place in news","topic":"Places in News","lat":9.5,"lng":45.5,"fact":"Somalia. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Al-Tanf","type":"Place in news","topic":"Places in News","lat":33.5,"lng":38.2,"fact":"Syria. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Suwayda","type":"Place in news","topic":"Places in News","lat":32.7,"lng":36.57,"fact":"Syria. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Tuvalu","type":"Place in news","topic":"Places in News","lat":-7.5,"lng":178.7,"fact":"Pacific Island Nation. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Kerch Strait/Crimean Bridge","type":"Place in news","topic":"Places in News","lat":45.3,"lng":36.6,"fact":"Russia/Crimea. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"GERD (Blue Nile)","type":"Place in news","topic":"Places in News","lat":11.2,"lng":35.1,"fact":"Ethiopia. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Durand Line","type":"Place in news","topic":"Places in News","lat":33.9,"lng":69.9,"fact":"Pakistan/Afghanistan. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Eswatini","type":"Place in news","topic":"Places in News","lat":-26.5,"lng":31.5,"fact":"Southern Africa. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Nord Stream Pipeline area","type":"Place in news","topic":"Places in News","lat":55,"lng":15,"fact":"Baltic Sea. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Netzarim Corridor","type":"Place in news","topic":"Places in News","lat":31.45,"lng":34.35,"fact":"Gaza Strip. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Al Udeid Air Base","type":"Place in news","topic":"Places in News","lat":25.12,"lng":51.32,"fact":"Qatar. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Machu Picchu","type":"Place in news","topic":"Places in News","lat":-13.16,"lng":-72.55,"fact":"Peru. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Point Nemo","type":"Place in news","topic":"Places in News","lat":-48.88,"lng":-123.4,"fact":"South Pacific Ocean. In the news as of Aug 2026 - verify against current affairs before relying on this."},{"name":"Bagram Air Base","type":"Place in news","topic":"Places in News","lat":34.95,"lng":69.26,"fact":"Afghanistan. In the news as of Aug 2026 - verify against current affairs before relying on this."}];
     const indiaTopics = [
-      {name:'National Parks',icon:'♧'}, {name:'Himalaya',icon:'△'}, {name:'Western & central',icon:'◒'}, {name:'Western Ghats',icon:'⌁'}, {name:'Eastern Ghats',icon:'⌇'}, {name:'Northeast',icon:'◌'}, {name:'Islands',icon:'◒'}, {name:'Dams',icon:'⊓'}, {name:'Lakes',icon:'≈'}, {name:'Biodiversity Hotspots',icon:'✿'}, {name:'Ramsar Wetlands',icon:'≈'}, {name:'UNESCO World Heritage Sites',icon:'♜'}, {name:'Waterfalls',icon:'⇊'}
+      {name:'National Parks',icon:'🌲'}, {name:'Himalaya',icon:'⛰'}, {name:'Western & central',icon:'⛰'}, {name:'Western Ghats',icon:'⛰'}, {name:'Eastern Ghats',icon:'⛰'}, {name:'Northeast',icon:'⛰'}, {name:'Islands',icon:'🏝️'}, {name:'Dams',icon:'🌉'}, {name:'Lakes',icon:'🏞️'}, {name:'Biodiversity Hotspots',icon:'🦋'}, {name:'Ramsar Wetlands',icon:'🦆'}, {name:'UNESCO World Heritage Sites',icon:'🏛️'}, {name:'Waterfalls',icon:'💦'}
     ];
     const indiaPlaces = [
       {name:'Karakoram Range',type:'Mountain range',topic:'Himalaya',lat:35.25,lng:77.15,fact:'Trans-Himalayan range in north-west Ladakh.'},
@@ -658,15 +637,8 @@ Lake Pichola|Rajasthan|24.57|73.68|Freshwater Lake`.trim().split('\n').map(row=>
     const riversData = RIVERS_NATURAL_EARTH.concat(RIVERS_APPROX).concat(WORLD_RIVERS);
     const map = L.map('map',{zoomControl:false, worldCopyJump:true, minZoom:2, maxZoom:8}).setView([22,30],2);
     L.control.zoom({position:'bottomright'}).addTo(map);
-    const streets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:8,attribution:'Tiles © Esri'});
-    const streetsDark = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:8,attribution:'Tiles © Esri'});
+    const streets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:8,attribution:'Tiles © Esri'}).addTo(map);
     const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:8,attribution:'Tiles © Esri'});
-    // mapTheme picks up the value the <head> script already stamped onto <html> pre-paint, so
-    // there's no second light->dark flash and no duplicate matchMedia/localStorage read here.
-    let mapTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-    function activeStreetsLayer(){ return mapTheme==='dark' ? streetsDark : streets; }
-    function setTheme(theme){ mapTheme=theme; document.documentElement.dataset.theme=theme; localStorage.setItem('atlasTheme',theme); document.querySelector('#themeToggle').textContent = theme==='dark' ? '☀' : '☾'; const onSatellite = document.querySelector('.map-mode button.active')?.dataset.map==='satellite'; if(!onSatellite){ map.removeLayer(streets); map.removeLayer(streetsDark); activeStreetsLayer().addTo(map); } }
-    activeStreetsLayer().addTo(map);
     const markerLayer = L.layerGroup().addTo(map), quizLayer = L.layerGroup().addTo(map);
     // Thin, non-interactive so it's pure visual context and never intercepts a Play-mode click.
     const riverLayer = L.layerGroup();
@@ -797,7 +769,10 @@ renderCorridorPicker();
     const topicGrid=document.querySelector('#topicGrid'), filters=document.querySelector('#filters'), placeList=document.querySelector('#placeList');
     const knownCount=document.querySelector('#knownCount'), scoreCount=document.querySelector('#scoreCount'), streakCount=document.querySelector('#streakCount');
     const quizCard=document.querySelector('#quizCard'), answerBox=document.querySelector('#answerBox');
-    function icon(isQuiz=false,place=null){ return L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,18],html:`<div class="pulse${isQuiz?' quiz':place?.topic==='National Parks'?' park':''}"></div>`}); }
+    // Marker glyph reuses the same emoji already on that topic's sidebar tile (currentTopics())
+    // rather than a second icon set - one source of truth for "what symbol means Waterfalls".
+    function topicIcon(topicName){ const t=currentTopics().find(x=>x.name===topicName); return t ? t.icon : ''; }
+    function icon(isQuiz=false,place=null){ const glyph = isQuiz ? '' : topicIcon(place?.topic); return L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,20],html:`<div class="pulse${isQuiz?' quiz':place?.topic==='National Parks'?' park':''}">${glyph?`<span class="pulse-glyph">${glyph}</span>`:''}</div>`}); }
     // Capitals-on-rivers, cross-checked against two independent sources (not just one) since
     // this is exactly the kind of memorized trivia UPSC tests, where a wrong pairing actively
     // misleads exam prep. One source claimed Beijing sits on the Yellow River - verified against
@@ -855,9 +830,7 @@ renderCorridorPicker();
     document.querySelector('#learnMode').onclick=()=>setMode('learn');document.querySelector('#playMode').onclick=()=>setMode('play');document.querySelector('#worldScope').onclick=()=>setScope('world');document.querySelector('#indiaScope').onclick=()=>setScope('india');
     document.querySelector('#nextQuestion').onclick=()=>{if(quizIndex>=quizOrder.length){startQuiz()}else{quizIndex++;nextQ()}};document.querySelector('#recenterQuiz').onclick=centerScope;map.on('click',checkAnswer);
     document.querySelector('#quizMinimize').onclick=(e)=>{e.stopPropagation();quizCard.classList.toggle('minimized');document.querySelector('#quizMinimize').textContent=quizCard.classList.contains('minimized')?'+':'−';};
-    document.querySelectorAll('.map-mode button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.map-mode button').forEach(x=>x.classList.toggle('active',x===b)); if(b.dataset.map==='satellite'){map.removeLayer(activeStreetsLayer());satellite.addTo(map)}else{map.removeLayer(satellite);activeStreetsLayer().addTo(map)}});
-    document.querySelector('#themeToggle').textContent = mapTheme==='dark' ? '☀' : '☾';
-    document.querySelector('#themeToggle').onclick=()=>setTheme(mapTheme==='dark'?'light':'dark');
+    document.querySelectorAll('.map-mode button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.map-mode button').forEach(x=>x.classList.toggle('active',x===b)); if(b.dataset.map==='satellite'){map.removeLayer(streets);satellite.addTo(map)}else{map.removeLayer(satellite);streets.addTo(map)}});
     // Mobile bottom sheet: tap the handle to toggle, or swipe it up/down. Swipe threshold (40px)
     // is deliberately generous so a small accidental drag while scrolling the place list doesn't
     // flip the sheet.
